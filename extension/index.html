@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ET Money Mentor - Tax Wizard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        /* Custom scrollbar to simulate extension feel */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        
+        .loader-pulse {
+            animation: pulse-glow 1.5s infinite;
+        }
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-200 flex items-center justify-center min-h-screen p-4 font-sans text-gray-800">
+
+    <!-- Extension Container -->
+    <div class="w-full max-w-[400px] bg-white rounded-2xl shadow-2xl overflow-hidden h-[650px] flex flex-col relative border border-gray-200">
+        
+        <!-- Header -->
+        <div class="bg-red-600 text-white p-4 flex items-center justify-between shadow-md z-10">
+            <div class="flex items-center gap-2">
+                <i class="ph-fill ph-wallet text-2xl"></i>
+                <h1 class="font-bold text-lg tracking-wide">ET Money Mentor</h1>
+            </div>
+            <button class="hover:bg-red-700 p-1 rounded transition" onclick="resetApp()" title="Reset">
+                <i class="ph ph-arrow-counter-clockwise text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Main Scrollable Content -->
+        <div id="main-content" class="flex-1 overflow-y-auto p-5 relative pb-20">
+            
+            <!-- Input View -->
+            <div id="input-view" class="space-y-5 transition-opacity duration-300">
+                <div class="text-center space-y-1">
+                    <h2 id="tool-title" class="text-xl font-bold text-gray-900">Tax Wizard</h2>
+                    <p id="tool-desc" class="text-sm text-gray-500">Upload your Form 16 or type your details to discover missing deductions.</p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex bg-gray-100 p-1 rounded-lg">
+                    <button onclick="switchTab('upload')" id="tab-upload" class="flex-1 py-2 text-sm font-semibold rounded-md bg-white shadow-sm text-red-600 transition">Upload Image</button>
+                    <button onclick="switchTab('text')" id="tab-text" class="flex-1 py-2 text-sm font-semibold rounded-md text-gray-500 hover:text-gray-700 transition">Quick Input</button>
+                </div>
+
+                <!-- Upload Section -->
+                <div id="section-upload" class="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center gap-3 bg-gray-50 hover:bg-red-50 hover:border-red-300 transition cursor-pointer" onclick="document.getElementById('file-upload').click()">
+                    <i class="ph ph-file-pdf text-4xl text-gray-400"></i>
+                    <p id="file-upload-text" class="text-sm text-gray-500 text-center">Click to upload Form 16 or Salary Slip<br><span class="text-xs">(JPEG, PNG)</span></p>
+                    <input type="file" id="file-upload" accept="image/*" class="hidden" onchange="handleFileUpload(event)">
+                    <img id="image-preview" class="hidden w-full h-32 object-cover rounded-lg border border-gray-200 mt-2" />
+                </div>
+
+                <!-- Text Input Section (Hidden by default) -->
+                <div id="section-text" class="hidden">
+                    <textarea id="text-input" rows="5" class="w-full border border-gray-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none" placeholder="E.g., My gross salary is ₹18,00,000. I invest ₹1.5L in PPF, pay ₹30k for health insurance, and pay ₹25k monthly rent."></textarea>
+                </div>
+
+                <!-- Action Button -->
+                <button id="analyze-btn" onclick="startAnalysis()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="ph-bold ph-magic-wand"></i>
+                    Analyze My Taxes
+                </button>
+
+                <!-- Error Message -->
+                <div id="error-message" class="hidden bg-red-100 text-red-700 p-3 rounded-lg text-sm text-center"></div>
+            </div>
+
+            <!-- Loading View -->
+            <div id="loading-view" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center loader-pulse mb-4">
+                    <i class="ph-bold ph-brain text-3xl animate-pulse"></i>
+                </div>
+                <h3 class="font-bold text-lg text-gray-800">AI is analyzing...</h3>
+                <p class="text-sm text-gray-500 mt-1 text-center px-6">Applying AY 2026-27 tax rules<br>and scanning for deductions.</p>
+            </div>
+
+            <!-- Results View -->
+            <div id="results-view" class="hidden space-y-5 pb-4">
+                
+                <!-- TAX RESULTS -->
+                <div id="tax-results" class="space-y-5">
+                    <!-- Recommendation Banner -->
+                    <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                    <!-- Missing Deductions -->
+                    <div>
+                        <h4 class="text-sm font-bold text-gray-800 flex items-center gap-1 mb-2">
+                            <i class="ph-fill ph-magnifying-glass text-red-500"></i> Smart Tax Opportunities
+                        </h4>
+                        <ul id="res-missing" class="space-y-2 text-sm text-gray-600 bg-red-50/50 p-3 rounded-lg border border-red-100">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- MF X-RAY RESULTS -->
+                <div id="mf-results" class="hidden space-y-5">
+                    <div class="bg-blue-50 rounded-xl p-4 border border-blue-100 text-center">
+                        <p class="text-gray-500 text-xs uppercase font-bold tracking-wider">Total Portfolio Value</p>
+                        <p id="mf-value" class="text-2xl font-bold text-blue-900 mt-1"></p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-white border rounded-xl p-4 shadow-sm text-center">
+                            <p class="text-gray-400 text-xs font-bold uppercase mb-1">Est. XIRR</p>
+                            <p id="mf-xirr" class="text-lg font-bold text-gray-800"></p>
+                        </div>
+                        <div class="bg-white border rounded-xl p-4 shadow-sm text-center">
+                            <p class="text-gray-400 text-xs font-bold uppercase mb-1">Expense Drag</p>
+                            <p id="mf-drag" class="text-lg font-bold text-red-600"></p>
+                        </div>
+                    </div>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                        <h4 class="text-sm font-bold text-yellow-800 flex items-center gap-2 mb-1"><i class="ph-fill ph-warning-circle"></i> Overlap Warning</h4>
+                        <p id="mf-overlap" class="text-sm text-yellow-700"></p>
+                    </div>
+                    <div class="bg-gray-50 border rounded-xl p-4">
+                        <h4 class="text-sm font-bold text-gray-800 mb-1">Rebalancing Advice</h4>
+                        <p id="mf-rebalance" class="text-sm text-gray-600"></p>
+                    </div>
+                </div>
+
+                <!-- FIRE PLANNER RESULTS -->
+                <div id="fire-results" class="hidden space-y-5">
+                    <div class="bg-purple-50 rounded-xl p-4 border border-purple-100 text-center">
+                        <p class="text-gray-500 text-xs uppercase font-bold tracking-wider">Target FIRE Corpus</p>
+                        <p id="fire-corpus" class="text-2xl font-bold text-purple-900 mt-1"></p>
+                        <p class="text-xs text-purple-600 mt-1">in <span id="fire-years" class="font-bold"></span> years</p>
+                    </div>
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm text-center flex flex-col items-center justify-center">
+                        <p class="text-gray-500 text-xs font-bold uppercase mb-1">Required Monthly SIP</p>
+                        <p id="fire-sip" class="text-xl font-bold text-gray-900"></p>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase mb-3 text-center">Ideal Asset Allocation</h4>
+                        <div class="flex justify-between items-center text-sm font-bold text-gray-700 px-4">
+                            <div class="text-center"><p class="text-2xl text-blue-500" id="fire-eq"></p><p class="text-xs font-normal text-gray-500">Equity</p></div>
+                            <div class="text-center"><p class="text-2xl text-green-500" id="fire-debt"></p><p class="text-xs font-normal text-gray-500">Debt</p></div>
+                            <div class="text-center"><p class="text-2xl text-yellow-500" id="fire-gold"></p><p class="text-xs font-normal text-gray-500">Gold</p></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-gray-800 mb-2">Strategic Advice</h4>
+                        <ul id="fire-advice" class="space-y-2 text-sm text-gray-600 bg-white p-3 rounded-lg border border-gray-200"></ul>
+                    </div>
+                </div>
+                
+                <button class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl text-sm transition mt-2" onclick="alert('In the real hackathon, this would auto-fill an ET portal or CRM!')">
+                    Export Report to ET Account
+                </button>
+
+            </div>
+        </div>
+
+        <!-- Bottom Navigation Menu -->
+        <div class="bg-white border-t border-gray-200 flex justify-around items-center absolute bottom-0 w-full z-10 p-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <button id="nav-tax" onclick="switchMainTool('tax')" class="nav-btn text-red-600 flex flex-col items-center p-2 w-20 transition-colors">
+                <i class="ph-fill ph-receipt text-2xl mb-1"></i>
+                <span class="text-[10px] font-bold">Tax Wizard</span>
+            </button>
+            <button id="nav-mf" onclick="switchMainTool('mf')" class="nav-btn text-gray-400 hover:text-red-500 flex flex-col items-center p-2 w-20 transition-colors">
+                <i class="ph-fill ph-chart-pie-slice text-2xl mb-1"></i>
+                <span class="text-[10px] font-bold">MF X-Ray</span>
+            </button>
+            <button id="nav-fire" onclick="switchMainTool('fire')" class="nav-btn text-gray-400 hover:text-red-500 flex flex-col items-center p-2 w-20 transition-colors">
+                <i class="ph-fill ph-campfire text-2xl mb-1"></i>
+                <span class="text-[10px] font-bold">FIRE Plan</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration (Provided by runtime environment)
+        const apiKey = ""; 
+
+        // State Variables
+        let currentTab = 'upload';
+        let currentTool = 'tax';
+        let uploadedBase64 = null;
+        let uploadedMimeType = null;
+
+        // Utility: Format currency
+        const formatMoney = (amount) => {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                maximumFractionDigits: 0
+            }).format(amount || 0);
+        };
+
+        // UI: Switch between Upload and Text tabs
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab-upload').className = tab === 'upload' 
+                ? 'flex-1 py-2 text-sm font-semibold rounded-md bg-white shadow-sm text-red-600 transition' 
+                : 'flex-1 py-2 text-sm font-semibold rounded-md text-gray-500 hover:text-gray-700 transition';
+            document.getElementById('tab-text').className = tab === 'text' 
+                ? 'flex-1 py-2 text-sm font-semibold rounded-md bg-white shadow-sm text-red-600 transition' 
+                : 'flex-1 py-2 text-sm font-semibold rounded-md text-gray-500 hover:text-gray-700 transition';
+            
+            document.getElementById('section-upload').classList.toggle('hidden', tab !== 'upload');
+            document.getElementById('section-text').classList.toggle('hidden', tab !== 'text');
+            document.getElementById('error-message').classList.add('hidden');
+        }
+
+        // UI: Handle File Selection
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const imgPreview = document.getElementById('image-preview');
+                imgPreview.src = e.target.result;
+                imgPreview.classList.remove('hidden');
+                
+                // Extract base64 (remove data:image/jpeg;base64, prefix)
+                uploadedBase64 = e.target.result.split(',')[1];
+                uploadedMimeType = file.type;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // UI: Reset App
+        function resetApp() {
+            document.getElementById('input-view').classList.remove('hidden');
+            document.getElementById('results-view').classList.add('hidden');
+            document.getElementById('error-message').classList.add('hidden');
+            document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('file-upload').value = '';
+            document.getElementById('text-input').value = '';
+            uploadedBase64 = null;
+        }
+
+        // UI: Switch Main Tool
+        function switchMainTool(tool) {
+            currentTool = tool;
+            
+            // Update Navigation UI
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.replace('text-red-600', 'text-gray-400'));
+            document.getElementById(`nav-${tool}`).classList.replace('text-gray-400', 'text-red-600');
+
+            // Update Input Texts
+            const titleEl = document.getElementById('tool-title');
+            const descEl = document.getElementById('tool-desc');
+            const textInput = document.getElementById('text-input');
+            const fileUploadText = document.getElementById('file-upload-text');
+
+            if(tool === 'tax') {
+                titleEl.innerText = 'Tax Wizard';
+                descEl.innerText = 'Upload Form 16 or type details to discover missing deductions.';
+                textInput.placeholder = 'E.g., My gross salary is ₹18,00,000. I invest ₹1.5L in PPF, pay ₹30k for health insurance, and pay ₹25k monthly rent.';
+                fileUploadText.innerHTML = 'Click to upload Form 16 or Salary Slip<br><span class="text-xs">(JPEG, PNG)</span>';
+            } else if(tool === 'mf') {
+                titleEl.innerText = 'MF Portfolio X-Ray';
+                descEl.innerText = 'Upload CAMS statement to check overlap, XIRR & rebalancing.';
+                textInput.placeholder = 'E.g., I have 5L in Parag Parikh Flexi, 3L in HDFC Midcap, 2L in SBI Small Cap...';
+                fileUploadText.innerHTML = 'Click to upload CAMS/KFintech Statement<br><span class="text-xs">(JPEG, PNG)</span>';
+            } else if(tool === 'fire') {
+                titleEl.innerText = 'FIRE Path Planner';
+                descEl.innerText = 'Input age, income & expenses to get your retirement roadmap.';
+                textInput.placeholder = 'E.g., I am 28, earn 1.5L/month, spend 50k, want to retire by 45.';
+                fileUploadText.innerHTML = 'Click to upload current asset summary<br><span class="text-xs">(JPEG, PNG)</span>';
+            }
+            
+            resetApp();
+        }
+
+        // Core AI Call
+        async function startAnalysis() {
+            const textInput = document.getElementById('text-input').value.trim();
+            
+            if (currentTab === 'upload' && !uploadedBase64) {
+                showError("Please upload an image first.");
+                return;
+            }
+            if (currentTab === 'text' && !textInput) {
+                showError("Please enter your financial details.");
+                return;
+            }
+
+            // --- IMPORTANT LOCAL TESTING FIX ---
+            // When you run this as a Chrome Extension locally, the Canvas API key is missing.
+            // You must insert your own Gemini API key below for local testing!
+            const localApiKey = apiKey || "YOUR_GEMINI_API_KEY"; 
+            if (localApiKey === "YOUR_GEMINI_API_KEY") {
+                 showError("Developer Setup Required: Please add your Gemini API Key in the index.html code (line ~300) to test locally.");
+                 return;
+            }
+
+            document.getElementById('input-view').classList.add('hidden');
+            document.getElementById('loading-view').classList.remove('hidden');
+            document.getElementById('error-message').classList.add('hidden');
+
+            let systemPrompt = "";
+
+            if (currentTool === 'tax') {
+                systemPrompt = `You are an expert Indian Chartered Accountant acting as an AI Money Mentor. 
+                Analyze the provided financial document image OR the text description. Extract the user's financial profile.
+                
+                CRITICAL RULES FOR AY 2026-27 (FY 2025-26):
+                - New Regime: Standard Deduction ₹75,000. Slabs: 0-4L(0%), 4-8L(5%), 8-12L(10%), 12-16L(15%), 16-20L(20%), 20-24L(25%), >24L(30%). Rebate u/s 87A up to ₹12L income.
+                - Old Regime: Standard Deduction ₹50,000. Slabs (age < 60): 0-2.5L(0%), 2.5-5L(5%), 5-10L(20%), >10L(30%). Rebate u/s 87A up to ₹5L income.
+                - Add 4% Health & Education Cess to final tax liability in both regimes.
+                - If data is missing or vague, make reasonable assumptions for a salaried individual.
+                
+                Output ONLY a valid JSON object matching exactly this schema, with no markdown backticks or extra text:
+                {
+                  "extractedData": {
+                    "grossSalary": number,
+                    "total80C": number,
+                    "hraExemption": number,
+                    "otherDeductions": number
+                  },
+                  "newRegime": {
+                    "taxableIncome": number,
+                    "taxLiability": number
+                  },
+                  "oldRegime": {
+                    "taxableIncome": number,
+                    "taxLiability": number
+                  },
+                  "recommendation": "string advising which regime is strictly better based on the numbers",
+                  "missingDeductionsFound": ["string actionable advice 1", "string actionable advice 2"]
+                }`;
+            } else if (currentTool === 'mf') {
+                systemPrompt = `You are a SEBI registered investment advisor acting as an AI Money Mentor. 
+                Analyze the provided mutual fund statement image OR text description.
+                Calculate a realistic portfolio summary, identify overlapping funds/sectors, and flag high expense ratios.
+                
+                Output ONLY a valid JSON object matching exactly this schema, with no markdown backticks or extra text:
+                {
+                  "portfolioSummary": { "totalValue": number, "topSectors": ["string", "string"] },
+                  "metrics": { "estimatedXIRR": "string e.g. 15.2%", "expenseRatioDrag": "string e.g. High (1.5%) or Low (0.5%)" },
+                  "analysis": { "overlapWarning": "string describing fund overlap or sector concentration", "rebalancingAction": "string actionable advice on what to sell/buy" }
+                }`;
+            } else if (currentTool === 'fire') {
+                systemPrompt = `You are an expert FIRE (Financial Independence, Retire Early) Planner acting as an AI Money Mentor. 
+                Analyze the provided user profile text OR image. Extract age, income, and expenses to build a retirement roadmap.
+                Assume an inflation rate of 6% and conservative equity returns of 12%. Calculate required corpus based on the 4% rule (Corpus = Annual Expenses / 0.04) adjusted for future value.
+                
+                Output ONLY a valid JSON object matching exactly this schema, with no markdown backticks or extra text:
+                {
+                  "fireMetrics": { "targetCorpus": number, "yearsToRetirement": number },
+                  "actionPlan": { "monthlySipRequired": number, "emergencyFundTarget": number },
+                  "assetAllocation": { "equity": number, "debt": number, "gold": number },
+                  "advice": ["string actionable advice 1", "string actionable advice 2"]
+                }`;
+            }
+
+            // Build Payload based on tab
+            const parts = [{ text: systemPrompt }];
+            if (currentTab === 'upload') {
+                parts.push({
+                    inlineData: { mimeType: uploadedMimeType, data: uploadedBase64 }
+                });
+                parts.push({ text: "Please analyze the attached image."});
+            } else {
+                parts.push({ text: "\n\nUser Input Data: " + textInput });
+            }
+
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: parts
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json"
+                }
+            };
+
+            // Exponential Backoff Implementation
+            // CHANGE THIS URL TO YOUR DEPLOYED BACKEND (OR LOCALHOST FOR TESTING)
+            const url = `http://localhost:3000/api/analyze`; // Use your backend URL here!
+            let retries = 3; // Reduced from 5 to prevent long hanging if API fails locally
+            let delay = 1000;
+            let success = false;
+            let aiResult = null;
+
+            while (retries > 0 && !success) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        console.error("API Error Response:", errText);
+                        throw new Error(`API call failed: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    let rawText = data.candidates[0].content.parts[0].text;
+                    
+                    // Cleanup any accidental markdown from the LLM
+                    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                    aiResult = JSON.parse(rawText);
+                    success = true;
+                } catch (error) {
+                    console.error("Attempt failed:", error);
+                    retries--;
+                    if (retries === 0) {
+                        document.getElementById('loading-view').classList.add('hidden');
+                        document.getElementById('input-view').classList.remove('hidden');
+                        showError("Analysis failed. Check your API key or console for errors.");
+                        return;
+                    }
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                }
+            }
+
+            if (success && aiResult) {
+                if (currentTool === 'tax') displayTaxResults(aiResult);
+                else if (currentTool === 'mf') displayMFResults(aiResult);
+                else if (currentTool === 'fire') displayFIREResults(aiResult);
+            }
+        }
+
+        // UI: Show Error
+        function showError(msg) {
+            const errDiv = document.getElementById('error-message');
+            errDiv.innerText = msg;
+            errDiv.classList.remove('hidden');
+        }
+
+        // UI: Render Tax Results
+        function displayTaxResults(data) {
+            document.getElementById('loading-view').classList.add('hidden');
+            document.getElementById('results-view').classList.remove('hidden');
+            
+            // Show only tax results
+            document.getElementById('tax-results').classList.remove('hidden');
+            document.getElementById('mf-results').classList.add('hidden');
+            document.getElementById('fire-results').classList.add('hidden');
+
+            // Populate Extracted Data
+            document.getElementById('res-gross').innerText = formatMoney(data.extractedData.grossSalary);
+            document.getElementById('res-80c').innerText = formatMoney(data.extractedData.total80C);
+            document.getElementById('res-hra').innerText = formatMoney(data.extractedData.hraExemption);
+            document.getElementById('res-other').innerText = formatMoney(data.extractedData.otherDeductions);
+
+            // Populate Regimes
+            document.getElementById('res-old-taxable').innerText = formatMoney(data.oldRegime.taxableIncome);
+            document.getElementById('res-old-tax').innerText = formatMoney(data.oldRegime.taxLiability);
+            
+            document.getElementById('res-new-taxable').innerText = formatMoney(data.newRegime.taxableIncome);
+            document.getElementById('res-new-tax').innerText = formatMoney(data.newRegime.taxLiability);
+
+            // Highlight Winner
+            const oldCard = document.getElementById('card-old');
+            const newCard = document.getElementById('card-new');
+            const oldBadge = document.getElementById('badge-old');
+            const newBadge = document.getElementById('badge-new');
+
+            // Reset styles
+            oldCard.className = "border rounded-xl p-4 flex flex-col relative transition-all";
+            newCard.className = "border rounded-xl p-4 flex flex-col relative transition-all";
+            oldBadge.classList.add('hidden');
+            newBadge.classList.add('hidden');
+
+            if (data.oldRegime.taxLiability < data.newRegime.taxLiability) {
+                oldCard.classList.add('border-green-500', 'bg-green-50', 'shadow-md');
+                oldBadge.classList.remove('hidden');
+                document.getElementById('res-old-tax').classList.replace('text-gray-900', 'text-green-700');
+            } else {
+                newCard.classList.add('border-green-500', 'bg-green-50', 'shadow-md');
+                newBadge.classList.remove('hidden');
+                document.getElementById('res-new-tax').classList.replace('text-gray-900', 'text-green-700');
+            }
+
+            // Recommendation
+            document.getElementById('res-recommendation').innerText = data.recommendation;
+
+            // Missing Deductions
+            const missingList = document.getElementById('res-missing');
+            missingList.innerHTML = '';
+            if (data.missingDeductionsFound && data.missingDeductionsFound.length > 0) {
+                data.missingDeductionsFound.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = "flex items-start gap-2";
+                    li.innerHTML = `<i class="ph-bold ph-arrow-right text-red-400 mt-1"></i><span>${item}</span>`;
+                    missingList.appendChild(li);
+                });
+            } else {
+                missingList.innerHTML = `<li class="text-gray-500 italic">Your tax profile looks fully optimized!</li>`;
+            }
+        }
+
+        // UI: Render MF Results
+        function displayMFResults(data) {
+            document.getElementById('loading-view').classList.add('hidden');
+            document.getElementById('results-view').classList.remove('hidden');
+            
+            // Show only MF results
+            document.getElementById('tax-results').classList.add('hidden');
+            document.getElementById('fire-results').classList.add('hidden');
+            document.getElementById('mf-results').classList.remove('hidden');
+
+            document.getElementById('mf-value').innerText = formatMoney(data.portfolioSummary.totalValue);
+            document.getElementById('mf-xirr').innerText = data.metrics.estimatedXIRR;
+            document.getElementById('mf-drag').innerText = data.metrics.expenseRatioDrag;
+            document.getElementById('mf-overlap').innerText = data.analysis.overlapWarning;
+            document.getElementById('mf-rebalance').innerText = data.analysis.rebalancingAction;
+        }
+
+        // UI: Render FIRE Results
+        function displayFIREResults(data) {
+            document.getElementById('loading-view').classList.add('hidden');
+            document.getElementById('results-view').classList.remove('hidden');
+            
+            // Show only FIRE results
+            document.getElementById('tax-results').classList.add('hidden');
+            document.getElementById('mf-results').classList.add('hidden');
+            document.getElementById('fire-results').classList.remove('hidden');
+
+            document.getElementById('fire-corpus').innerText = formatMoney(data.fireMetrics.targetCorpus);
+            document.getElementById('fire-years').innerText = data.fireMetrics.yearsToRetirement;
+            document.getElementById('fire-sip').innerText = formatMoney(data.actionPlan.monthlySipRequired);
+            
+            document.getElementById('fire-eq').innerText = data.assetAllocation.equity + '%';
+            document.getElementById('fire-debt').innerText = data.assetAllocation.debt + '%';
+            document.getElementById('fire-gold').innerText = data.assetAllocation.gold + '%';
+
+            const adviceList = document.getElementById('fire-advice');
+            adviceList.innerHTML = '';
+            data.advice.forEach(item => {
+                const li = document.createElement('li');
+                li.className = "flex items-start gap-2";
+                li.innerHTML = `<i class="ph-bold ph-check text-purple-500 mt-1"></i><span>${item}</span>`;
+                adviceList.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>

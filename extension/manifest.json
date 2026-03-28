@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "ET Money Mentor AI",
+  "version": "1.0",
+  "description": "AI-powered Tax Wizard, MF X-Ray, and FIRE Planner.",
+  "action": {
+    "default_popup": "index.html"
+  },
+  "permissions": ["activeTab"]
+}
