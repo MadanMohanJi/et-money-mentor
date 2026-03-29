@@ -4,9 +4,7 @@ let currentTool = 'tax';
 let uploadedBase64 = null;
 let uploadedMimeType = null;
 
-// 👉 HARDCODE YOUR KEY HERE FOR THE SUBMISSION ZIP 👈
-// (Judges expect this in hackathon prototypes for easy testing)
-const GEMINI_API_KEY = "AIzaSyAr1JdesqlnFG0t0FYrMxILYt0PFGP4Jmc";
+const RENDER_URL = "https://et-money-mentor-vmxa.onrender.com/api/analyze";
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-reset').addEventListener('click', resetApp);
@@ -19,16 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('file-upload').addEventListener('change', handleFileUpload);
     
     document.getElementById('analyze-btn').addEventListener('click', startAnalysis);
-    
-    document.getElementById('btn-export').addEventListener('click', () => {
-        const btn = document.getElementById('btn-export');
-        btn.innerHTML = `<i class="ph-bold ph-check-circle text-lg"></i> Exported!`;
-        btn.classList.add('bg-green-100', 'text-green-700');
-        setTimeout(() => {
-            btn.innerHTML = `Export Report to ET Account`;
-            btn.classList.remove('bg-green-100', 'text-green-700');
-        }, 3000);
-    });
     
     document.getElementById('nav-tax').addEventListener('click', () => switchMainTool('tax'));
     document.getElementById('nav-mf').addEventListener('click', () => switchMainTool('mf'));
@@ -101,37 +89,25 @@ async function startAnalysis() {
     }
 
     const payload = {
-        contents: [{
-            parts: [
-                { text: systemPrompt },
-                uploadedBase64 ? { inlineData: { mimeType: uploadedMimeType, data: uploadedBase64 } } : { text: "User Input: " + textInput }
-            ]
-        }],
-        generationConfig: {
-            // We use standard strings to avoid 400 errors
-            "temperature": 0.4,
-            "topK": 32,
-            "topP": 1,
-            "maxOutputTokens": 2048
-        }
+        systemPrompt: systemPrompt,
+        userText: textInput || "Analyze the uploaded image.",
+        imageBase64: currentTab === 'upload' ? uploadedBase64 : null,
+        mimeType: currentTab === 'upload' ? uploadedMimeType : null
     };
 
-    // DIRECT CALL: Skip Render, call Google directly
-    // Using v1beta and gemini-1.5-flash which is the most compatible combination
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-
     try {
-        const response = await fetch(url, {
+        const response = await fetch(RENDER_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || "API error");
+        if (!response.ok) throw new Error(data.error || "Server error");
 
-        const rawText = data.candidates[0].content.parts[0].text;
-        const result = JSON.parse(rawText.replace(/```json/g, '').replace(/```/g, '').trim());
+        // Safely parse the JSON string from Gemini
+        const cleanJson = data.result.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const result = JSON.parse(cleanJson);
 
         document.getElementById('loading-view').classList.add('hidden');
         document.getElementById('results-view').classList.remove('hidden');
