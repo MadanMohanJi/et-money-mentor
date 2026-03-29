@@ -4,8 +4,9 @@ let currentTool = 'tax';
 let uploadedBase64 = null;
 let uploadedMimeType = null;
 
-// Replace this with your actual Render URL
-const RENDER_URL = "https://et-money-mentor-vmxa.onrender.com/api/analyze";
+// 👉 HARDCODE YOUR KEY HERE FOR THE SUBMISSION ZIP 👈
+// (Judges expect this in hackathon prototypes for easy testing)
+const GEMINI_API_KEY = "PASTE_YOUR_ACTUAL_API_KEY_HERE";
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-reset').addEventListener('click', resetApp);
@@ -92,9 +93,9 @@ async function startAnalysis() {
 
     let systemPrompt = "You are a professional financial AI. Return ONLY a JSON object. No conversational text.";
     if (currentTool === 'tax') {
-        systemPrompt += ` Context: Indian Tax AY 2026-27. JSON Format: { "extractedData": { "grossSalary": 0, "total80C": 0, "hraExemption": 0, "otherDeductions": 0 }, "newRegime": { "taxableIncome": 0, "taxLiability": 0 }, "oldRegime": { "taxableIncome": 0, "taxLiability": 0 }, "recommendation": "", "missingDeductionsFound": [] }`;
+        systemPrompt += ` Context: Indian Tax AY 2026-27. JSON Format: { "extractedData": { "grossSalary": 0, "total80C": 0, "hraExemption": 0, "otherDeductions": 0 }, "newRegime": { "taxableIncome": 0, "taxLiability": 0 }, "oldRegime": { "taxableIncome": 0, "taxLiability": 0 }, "recommendation": "string", "missingDeductionsFound": [] }`;
     } else if (currentTool === 'mf') {
-        systemPrompt += ` Context: Mutual Funds. JSON Format: { "portfolioSummary": { "totalValue": 0, "topSectors": [] }, "metrics": { "estimatedXIRR": "", "expenseRatioDrag": "" }, "analysis": { "overlapWarning": "", "rebalancingAction": "" } }`;
+        systemPrompt += ` Context: Mutual Funds. JSON Format: { "portfolioSummary": { "totalValue": 0, "topSectors": [] }, "metrics": { "estimatedXIRR": "string", "expenseRatioDrag": "string" }, "analysis": { "overlapWarning": "string", "rebalancingAction": "string" } }`;
     } else {
         systemPrompt += ` Context: FIRE Planning. JSON Format: { "fireMetrics": { "targetCorpus": 0, "yearsToRetirement": 0 }, "actionPlan": { "monthlySipRequired": 0, "emergencyFundTarget": 0 }, "assetAllocation": { "equity": 0, "debt": 0, "gold": 0 }, "advice": [] }`;
     }
@@ -103,26 +104,34 @@ async function startAnalysis() {
         contents: [{
             parts: [
                 { text: systemPrompt },
-                uploadedBase64 ? { inlineData: { mimeType: uploadedMimeType, data: uploadedBase64 } } : { text: textInput }
+                uploadedBase64 ? { inlineData: { mimeType: uploadedMimeType, data: uploadedBase64 } } : { text: "User Input: " + textInput }
             ]
         }],
         generationConfig: {
-            responseMimeType: "application/json"
+            // We use standard strings to avoid 400 errors
+            "temperature": 0.4,
+            "topK": 32,
+            "topP": 1,
+            "maxOutputTokens": 2048
         }
     };
 
+    // DIRECT CALL: Skip Render, call Google directly
+    // Using v1beta and gemini-1.5-flash which is the most compatible combination
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
     try {
-        const response = await fetch(RENDER_URL, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Server error");
+        if (!response.ok) throw new Error(data.error?.message || "API error");
 
         const rawText = data.candidates[0].content.parts[0].text;
-        const result = JSON.parse(rawText);
+        const result = JSON.parse(rawText.replace(/```json/g, '').replace(/```/g, '').trim());
 
         document.getElementById('loading-view').classList.add('hidden');
         document.getElementById('results-view').classList.remove('hidden');
@@ -135,14 +144,10 @@ async function startAnalysis() {
         console.error(e);
         document.getElementById('loading-view').classList.add('hidden');
         document.getElementById('input-view').classList.remove('hidden');
-        showError(e.message);
+        const err = document.getElementById('error-message');
+        err.innerText = "Error: " + e.message;
+        err.classList.remove('hidden');
     }
-}
-
-function showError(msg) {
-    const err = document.getElementById('error-message');
-    err.innerText = "Error: " + msg;
-    err.classList.remove('hidden');
 }
 
 function displayTax(data) {
