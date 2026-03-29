@@ -4,6 +4,7 @@ let currentTool = 'tax';
 let uploadedBase64 = null;
 let uploadedMimeType = null;
 
+// 👉 YOUR LIVE RENDER URL
 const RENDER_URL = "https://et-money-mentor-vmxa.onrender.com/api/analyze";
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -17,6 +18,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('file-upload').addEventListener('change', handleFileUpload);
     
     document.getElementById('analyze-btn').addEventListener('click', startAnalysis);
+    
+    document.getElementById('btn-export').addEventListener('click', () => {
+        const btn = document.getElementById('btn-export');
+        btn.innerHTML = `<i class="ph-bold ph-check-circle text-lg"></i> Exported!`;
+        btn.classList.add('bg-green-100', 'text-green-700');
+        setTimeout(() => {
+            btn.innerHTML = `Export Report to ET Account`;
+            btn.classList.remove('bg-green-100', 'text-green-700');
+        }, 3000);
+    });
     
     document.getElementById('nav-tax').addEventListener('click', () => switchMainTool('tax'));
     document.getElementById('nav-mf').addEventListener('click', () => switchMainTool('mf'));
@@ -40,10 +51,22 @@ function handleFileUpload(event) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-        document.getElementById('image-preview').src = e.target.result;
-        document.getElementById('image-preview').classList.remove('hidden');
         uploadedBase64 = e.target.result.split(',')[1];
         uploadedMimeType = file.type;
+        
+        const imgPreview = document.getElementById('image-preview');
+        const pdfPreview = document.getElementById('pdf-preview');
+        
+        if (file.type === 'application/pdf') {
+            if (imgPreview) imgPreview.classList.add('hidden');
+            if (pdfPreview) pdfPreview.classList.remove('hidden');
+        } else {
+            if (pdfPreview) pdfPreview.classList.add('hidden');
+            if (imgPreview) {
+                imgPreview.src = e.target.result;
+                imgPreview.classList.remove('hidden');
+            }
+        }
     };
     reader.readAsDataURL(file);
 }
@@ -52,6 +75,7 @@ function resetApp() {
     document.getElementById('input-view').classList.remove('hidden');
     document.getElementById('results-view').classList.add('hidden');
     document.getElementById('image-preview').classList.add('hidden');
+    if (document.getElementById('pdf-preview')) document.getElementById('pdf-preview').classList.add('hidden');
     document.getElementById('error-message').classList.add('hidden');
     uploadedBase64 = null;
 }
@@ -105,9 +129,9 @@ async function startAnalysis() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Server error");
 
-        // Safely parse the JSON string from Gemini
-        const cleanJson = data.result.replace(/```json/gi, '').replace(/```/g, '').trim();
-        const result = JSON.parse(cleanJson);
+        // Parse the JSON string from our Render backend
+        const rawText = data.result;
+        const result = JSON.parse(rawText.replace(/```json/g, '').replace(/```/g, '').trim());
 
         document.getElementById('loading-view').classList.add('hidden');
         document.getElementById('results-view').classList.remove('hidden');

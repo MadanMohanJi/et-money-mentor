@@ -3,6 +3,13 @@ ET Money Mentor AI - Chrome Extension
 Submission for the ET AI Hackathon 2026
 Solving Problem Statement 9: AI Money Mentor
 
+
+⚠️ Note to Judges: API Key & Architecture
+
+For the sake of a frictionless evaluation experience and to avoid "cold-start" delays from free-tier backend servers, we have included a temporary, restricted Google Gemini API key directly within the submitted .zip extension files.
+
+This allows you to load the extension and test the AI instantly without any setup. Please note this is purely for hackathon prototyping. In our production architecture (detailed below), all API calls are securely routed through a Node.js Express proxy hosted on Render.com, keeping keys completely hidden from the client. This temporary key will be revoked post-evaluation.
+
 🚀 The Problem
 
 95% of Indians lack a financial plan. Financial advisors charge ₹25,000+ per year and serve only High Net-worth Individuals (HNIs). Furthermore, retail investors are overwhelmed by complex documents like Form 16s and CAMS mutual fund statements, causing them to miss tax-saving opportunities and lose money to poor asset allocation.

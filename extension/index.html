@@ -58,9 +58,10 @@
                 <!-- Upload Section -->
                 <div id="section-upload" class="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center gap-3 bg-gray-50 hover:bg-red-50 hover:border-red-300 transition cursor-pointer">
                     <i class="ph ph-file-pdf text-4xl text-gray-400"></i>
-                    <p id="file-upload-text" class="text-sm text-gray-500 text-center">Click to upload Form 16 or Salary Slip<br><span class="text-xs">(JPEG, PNG)</span></p>
-                    <input type="file" id="file-upload" accept="image/*" class="hidden">
+                    <p id="file-upload-text" class="text-sm text-gray-500 text-center">Click to upload Form 16 or Salary Slip<br><span class="text-xs">(JPEG, PNG, PDF)</span></p>
+                    <input type="file" id="file-upload" accept="image/*,application/pdf" class="hidden">
                     <img id="image-preview" class="hidden w-full h-32 object-cover rounded-lg border border-gray-200 mt-2" />
+                    <p id="pdf-preview" class="hidden text-sm text-green-600 font-bold mt-2"><i class="ph-fill ph-check-circle"></i> PDF Attached Successfully!</p>
                 </div>
 
                 <!-- Text Input Section -->
