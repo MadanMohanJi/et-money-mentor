@@ -1,8 +1,7 @@
-ET Money Mentor AI - Chrome Extension
+T Money Mentor AI - Chrome Extension
 
 Submission for the ET AI Hackathon 2026
 Solving Problem Statement 9: AI Money Mentor
-
 
 ⚠️ Note to Judges: API Key & Architecture
 
@@ -32,19 +31,13 @@ FIRE Path Planner: Natural language input to instantly generate a retirement SIP
 
 To run this project locally and test the extension:
 
-Clone this repository to your local machine.
-
-Get a free API key from Google AI Studio.
-
-Open index.html in your code editor.
-
-Locate the line const localApiKey = apiKey || "YOUR_GEMINI_API_KEY"; (around line 300) and replace "YOUR_GEMINI_API_KEY" with your actual key.
+Download and extract the provided .zip folder.
 
 Open Google Chrome and go to chrome://extensions/.
 
 Toggle Developer mode in the top right corner.
 
-Click Load unpacked and select the folder containing your project files.
+Click Load unpacked and select the extracted extension folder.
 
 Click the puzzle piece icon in Chrome, pin the ET Money Mentor, and launch it!
 
