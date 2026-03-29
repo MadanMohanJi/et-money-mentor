@@ -4,6 +4,9 @@ let currentTool = 'tax';
 let uploadedBase64 = null;
 let uploadedMimeType = null;
 
+// Replace this with your actual Render URL
+const RENDER_URL = "https://et-money-mentor-vmxa.onrender.com/api/analyze";
+
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-reset').addEventListener('click', resetApp);
     document.getElementById('tab-upload').addEventListener('click', () => switchTab('upload'));
@@ -60,6 +63,7 @@ function resetApp() {
     document.getElementById('input-view').classList.remove('hidden');
     document.getElementById('results-view').classList.add('hidden');
     document.getElementById('image-preview').classList.add('hidden');
+    document.getElementById('error-message').classList.add('hidden');
     uploadedBase64 = null;
 }
 
@@ -84,14 +88,15 @@ async function startAnalysis() {
     
     document.getElementById('input-view').classList.add('hidden');
     document.getElementById('loading-view').classList.remove('hidden');
+    document.getElementById('error-message').classList.add('hidden');
 
-    let systemPrompt = "You are a financial AI. Return ONLY a JSON object. ";
+    let systemPrompt = "You are a professional financial AI. Return ONLY a JSON object. No conversational text.";
     if (currentTool === 'tax') {
-        systemPrompt += `Rules: AY 2026-27. JSON Format: { "extractedData": { "grossSalary": 0, "total80C": 0, "hraExemption": 0, "otherDeductions": 0 }, "newRegime": { "taxableIncome": 0, "taxLiability": 0 }, "oldRegime": { "taxableIncome": 0, "taxLiability": 0 }, "recommendation": "", "missingDeductionsFound": [] }`;
+        systemPrompt += ` Context: Indian Tax AY 2026-27. JSON Format: { "extractedData": { "grossSalary": 0, "total80C": 0, "hraExemption": 0, "otherDeductions": 0 }, "newRegime": { "taxableIncome": 0, "taxLiability": 0 }, "oldRegime": { "taxableIncome": 0, "taxLiability": 0 }, "recommendation": "", "missingDeductionsFound": [] }`;
     } else if (currentTool === 'mf') {
-        systemPrompt += `JSON Format: { "portfolioSummary": { "totalValue": 0, "topSectors": [] }, "metrics": { "estimatedXIRR": "", "expenseRatioDrag": "" }, "analysis": { "overlapWarning": "", "rebalancingAction": "" } }`;
+        systemPrompt += ` Context: Mutual Funds. JSON Format: { "portfolioSummary": { "totalValue": 0, "topSectors": [] }, "metrics": { "estimatedXIRR": "", "expenseRatioDrag": "" }, "analysis": { "overlapWarning": "", "rebalancingAction": "" } }`;
     } else {
-        systemPrompt += `JSON Format: { "fireMetrics": { "targetCorpus": 0, "yearsToRetirement": 0 }, "actionPlan": { "monthlySipRequired": 0, "emergencyFundTarget": 0 }, "assetAllocation": { "equity": 0, "debt": 0, "gold": 0 }, "advice": [] }`;
+        systemPrompt += ` Context: FIRE Planning. JSON Format: { "fireMetrics": { "targetCorpus": 0, "yearsToRetirement": 0 }, "actionPlan": { "monthlySipRequired": 0, "emergencyFundTarget": 0 }, "assetAllocation": { "equity": 0, "debt": 0, "gold": 0 }, "advice": [] }`;
     }
 
     const payload = {
@@ -100,21 +105,23 @@ async function startAnalysis() {
                 { text: systemPrompt },
                 uploadedBase64 ? { inlineData: { mimeType: uploadedMimeType, data: uploadedBase64 } } : { text: textInput }
             ]
-        }]
+        }],
+        generationConfig: {
+            responseMimeType: "application/json"
+        }
     };
 
     try {
-        const response = await fetch('https://et-money-mentor-vmxa.onrender.com/api/analyze', {
+        const response = await fetch(RENDER_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
+        if (!response.ok) throw new Error(data.error || "Server error");
 
-        let rawText = data.candidates[0].content.parts[0].text;
-        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const rawText = data.candidates[0].content.parts[0].text;
         const result = JSON.parse(rawText);
 
         document.getElementById('loading-view').classList.add('hidden');
@@ -125,10 +132,17 @@ async function startAnalysis() {
         else displayFIRE(result);
 
     } catch (e) {
+        console.error(e);
         document.getElementById('loading-view').classList.add('hidden');
         document.getElementById('input-view').classList.remove('hidden');
-        alert("Error: " + e.message);
+        showError(e.message);
     }
+}
+
+function showError(msg) {
+    const err = document.getElementById('error-message');
+    err.innerText = "Error: " + msg;
+    err.classList.remove('hidden');
 }
 
 function displayTax(data) {
