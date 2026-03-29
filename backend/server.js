@@ -15,7 +15,7 @@ app.post('/api/analyze', async (req, res) => {
 
         // Using the REST API method (fetch) which you used previously
         // We use v1beta and gemini-1.5-flash as it's the most stable for this method
-        const model = "gemini-1.5-flash";
+        const model = "gemini-2.5-flash";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
         console.log(`Analyzing request with model: ${model}...`);
