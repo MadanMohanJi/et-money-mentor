@@ -6,7 +6,7 @@ let uploadedMimeType = null;
 
 // 👉 HARDCODE YOUR KEY HERE FOR THE SUBMISSION ZIP 👈
 // (Judges expect this in hackathon prototypes for easy testing)
-const GEMINI_API_KEY = "PASTE_YOUR_ACTUAL_API_KEY_HERE";
+const GEMINI_API_KEY = "AIzaSyAr1JdesqlnFG0t0FYrMxILYt0PFGP4Jmc";
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-reset').addEventListener('click', resetApp);
